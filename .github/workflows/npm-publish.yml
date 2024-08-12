@@ -1,0 +1,83 @@
+name: Publish Package to npm
+
+# on:
+#   repository_dispatch:
+#     types: [publish_package]
+
+on:
+  push:
+    branches:
+      - '**'  # Trigger workflow on pushes to all branches
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  npm-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      repository-projects: write
+    if: ${{ github.ref == 'refs/heads/master' }}  # Adjust to your main branch
+
+    strategy:
+      matrix:
+        node-version: ["20.13.1"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install Yarn
+        run: corepack enable && corepack prepare yarn@stable --activate
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build Angular project
+        run: yarn build:zephyr-ui:prod
+
+      - name: Configure npm authentication
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+
+      - name: Run Semantic Release
+        run: npx semantic-release
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub release
+        if: steps.semantic-release.outputs.nextRelease != ''
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ steps.semantic-release.outputs.nextRelease.version }}
+          release_name: Release ${{ steps.semantic-release.outputs.nextRelease.version }}
+          body: ${{ steps.semantic-release.outputs.notes }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Semantic Release
+        run: |
+         cd dist
+         npm publish --access public
+        env:
+            NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
+
+      - name: Trigger StoryBook publish workflow
+        run: |
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -d '{"event_type": "publish_storybook"}' \
+            https://api.github.com/repos/${{ github.repository }}/dispatches
