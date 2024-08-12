@@ -9,11 +9,11 @@ To install the Zephyr UI components library, use the following command:
 
 **npm**
 
-```npm install @zephyr-ui/essentials ```
+```npm install @zephyr-ui/essentials```
 
 **yarn** 
 
-```yarn add @zephyr-ui/essentials ```
+```yarn add @zephyr-ui/essentials```
 
 # Storybook
 Zephyr UI components are extensively documented and showcased in Storybook <link storybook>
