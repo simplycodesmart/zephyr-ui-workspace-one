@@ -46,7 +46,9 @@ jobs:
         run: yarn build:zephyr-ui:prod
 
       - name: Configure npm authentication
-        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+        run: |
+         echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}
+         access=public" | base64 -i - > ~/.npmrc
 
       - name: Run Semantic Release
         run: npx semantic-release
